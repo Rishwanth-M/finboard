@@ -17,7 +17,6 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [apiUrl, setApiUrl] = useState('');
   const [interval, setInterval] = useState(30);
-
   const [widgetType, setWidgetType] =
     useState<'card' | 'table' | 'chart'>('card');
 
@@ -27,11 +26,10 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [apiTested, setApiTested] = useState(false);
 
-  /* ---------- SMART FIELD FLATTENER (ALPHA VANTAGE SAFE) ---------- */
+  /* -------- SMART FIELD FLATTENER (API-AGNOSTIC) -------- */
   function flatten(obj: any, result: FlatField[] = []) {
     if (!obj || typeof obj !== 'object') return result;
 
-    // If array → extract fields from FIRST object only
     if (Array.isArray(obj)) {
       if (obj.length && typeof obj[0] === 'object') {
         flatten(obj[0], result);
@@ -43,7 +41,6 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
       const value = obj[key];
 
       if (Array.isArray(value)) {
-        // 👇 KEY FIX: ignore array name, flatten its object items
         flatten(value, result);
       } else if (typeof value === 'object' && value !== null) {
         flatten(value, result);
@@ -66,9 +63,7 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
     try {
       setLoading(true);
       const data = await fetchApi(apiUrl);
-      const flat = flatten(data);
-
-      setFields(flat);
+      setFields(flatten(data));
       setSelected([]);
       setApiTested(true);
     } catch {
@@ -103,15 +98,27 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
     f.path.toLowerCase().includes(search.toLowerCase())
   );
 
+  function isSelected(path: string) {
+    return selected.some((s) => s.path === path);
+  }
+
+  function addField(f: FlatField) {
+    if (!isSelected(f.path)) {
+      setSelected((prev) => [...prev, f]);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#111827] w-[520px] rounded-lg p-6">
+      <div className="bg-[#111827] w-[520px] max-w-[95vw] rounded-lg p-6">
 
+        {/* HEADER */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Add New Widget</h2>
           <button onClick={onClose} className="text-gray-400">✕</button>
         </div>
 
+        {/* BASIC INPUTS */}
         <label className="text-xs">Widget Name</label>
         <input
           className="w-full bg-[#0b1220] p-2 rounded mt-1 mb-3"
@@ -145,6 +152,7 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
 
         {apiTested && (
           <>
+            {/* TYPE */}
             <label className="text-xs mt-4 block">Widget Type</label>
             <div className="flex gap-2 mt-1">
               {(['card', 'table', 'chart'] as const).map((t) => (
@@ -160,6 +168,7 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
 
+            {/* SEARCH */}
             <label className="text-xs mt-4 block">Search Fields</label>
             <input
               className="w-full bg-[#0b1220] p-2 rounded mt-1"
@@ -167,11 +176,14 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setSearch(e.target.value)}
             />
 
+            {/* FIELD LIST */}
             <div className="mt-4 max-h-32 overflow-y-auto bg-[#0b1220] rounded p-2 space-y-1">
               {filtered.map((f) => (
                 <div
                   key={f.path}
-                  className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded"
+                  onClick={() => addField(f)}
+                  className={`flex justify-between items-center text-xs p-3 rounded cursor-pointer
+                    ${isSelected(f.path) ? 'bg-emerald-500/10' : 'hover:bg-white/5'}`}
                 >
                   <div>
                     <div>{f.path}</div>
@@ -179,21 +191,42 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
                       {f.type} | {f.sample}
                     </div>
                   </div>
-                  <button
-                    onClick={() =>
-                      !selected.find((s) => s.path === f.path) &&
-                      setSelected([...selected, f])
-                    }
-                    className="text-emerald-400"
-                  >
-                    +
-                  </button>
+
+                  <span className="text-emerald-400 text-lg select-none">
+                    {isSelected(f.path) ? '✓' : '+'}
+                  </span>
                 </div>
               ))}
             </div>
+
+            {/* SELECTED */}
+            {selected.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-400 mb-1">Selected Fields</p>
+                <div className="bg-[#0b1220] rounded p-2 space-y-1">
+                  {selected.map((f) => (
+                    <div
+                      key={f.path}
+                      className="flex justify-between items-center text-xs"
+                    >
+                      <span>{f.path}</span>
+                      <button
+                        onClick={() =>
+                          setSelected(selected.filter((x) => x.path !== f.path))
+                        }
+                        className="text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
+        {/* ACTIONS */}
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={onClose} className="text-gray-400 text-sm">
             Cancel
