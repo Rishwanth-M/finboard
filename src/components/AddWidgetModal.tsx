@@ -3,8 +3,13 @@
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import { fetchApi } from '@/services/apiService';
-import { flattenJson, FlatField } from '@/utils/jsonFlattener';
 import { useDashboardStore } from '@/store/dashboardStore';
+
+export type FlatField = {
+  path: string;
+  type: string;
+  sample: string;
+};
 
 export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
   const addWidget = useDashboardStore((s) => s.addWidget);
@@ -18,20 +23,52 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
 
   const [fields, setFields] = useState<FlatField[]>([]);
   const [selected, setSelected] = useState<FlatField[]>([]);
-
   const [search, setSearch] = useState('');
-  const [showArraysOnly, setShowArraysOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiTested, setApiTested] = useState(false);
 
-  /* ------------------ API TEST ------------------ */
+  /* ---------- SMART FIELD FLATTENER (ALPHA VANTAGE SAFE) ---------- */
+  function flatten(obj: any, result: FlatField[] = []) {
+    if (!obj || typeof obj !== 'object') return result;
+
+    // If array → extract fields from FIRST object only
+    if (Array.isArray(obj)) {
+      if (obj.length && typeof obj[0] === 'object') {
+        flatten(obj[0], result);
+      }
+      return result;
+    }
+
+    for (const key in obj) {
+      const value = obj[key];
+
+      if (Array.isArray(value)) {
+        // 👇 KEY FIX: ignore array name, flatten its object items
+        flatten(value, result);
+      } else if (typeof value === 'object' && value !== null) {
+        flatten(value, result);
+      } else {
+        result.push({
+          path: key,
+          type: typeof value,
+          sample: String(value),
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /* ---------------- API TEST ---------------- */
   async function handleTest() {
     if (!apiUrl) return;
 
     try {
       setLoading(true);
       const data = await fetchApi(apiUrl);
-      setFields(flattenJson(data));
+      const flat = flatten(data);
+
+      setFields(flat);
       setSelected([]);
       setApiTested(true);
     } catch {
@@ -42,7 +79,7 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  /* ------------------ ADD WIDGET ------------------ */
+  /* ---------------- ADD WIDGET ---------------- */
   function handleAdd() {
     if (!title || !apiUrl || !selected.length) {
       alert('Fill all required fields');
@@ -62,23 +99,19 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
     onClose();
   }
 
-  /* ------------------ FILTER ------------------ */
-  const filteredFields = fields.filter((f) => {
-    if (showArraysOnly && f.type !== 'array') return false;
-    return f.path.toLowerCase().includes(search.toLowerCase());
-  });
+  const filtered = fields.filter((f) =>
+    f.path.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-[#111827] w-[520px] rounded-lg p-6">
 
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Add New Widget</h2>
           <button onClick={onClose} className="text-gray-400">✕</button>
         </div>
 
-        {/* BASIC INPUTS */}
         <label className="text-xs">Widget Name</label>
         <input
           className="w-full bg-[#0b1220] p-2 rounded mt-1 mb-3"
@@ -107,23 +140,22 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
           min={5}
           className="w-full bg-[#0b1220] p-2 rounded mt-1"
           value={interval}
-          onChange={(e) => setInterval(Number(e.target.value))}
+          onChange={(e) => setInterval(+e.target.value)}
         />
 
-        {/* AFTER API TEST */}
         {apiTested && (
           <>
             <label className="text-xs mt-4 block">Widget Type</label>
             <div className="flex gap-2 mt-1">
-              {(['card', 'table', 'chart'] as const).map((mode) => (
+              {(['card', 'table', 'chart'] as const).map((t) => (
                 <button
-                  key={mode}
-                  onClick={() => setWidgetType(mode)}
+                  key={t}
+                  onClick={() => setWidgetType(t)}
                   className={`px-3 py-1 text-xs rounded ${
-                    widgetType === mode ? 'bg-emerald-500' : 'bg-[#0b1220]'
+                    widgetType === t ? 'bg-emerald-500' : 'bg-[#0b1220]'
                   }`}
                 >
-                  {mode.toUpperCase()}
+                  {t.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -135,70 +167,33 @@ export default function AddWidgetModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setSearch(e.target.value)}
             />
 
-            <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-              <input
-                type="checkbox"
-                checked={showArraysOnly}
-                onChange={(e) => setShowArraysOnly(e.target.checked)}
-              />
-              Show arrays only
-            </div>
-
-            {/* AVAILABLE FIELDS */}
-            <div className="mt-4">
-              <div className="max-h-32 overflow-y-auto bg-[#0b1220] rounded p-2 space-y-1">
-                {filteredFields.map((f) => (
-                  <div
-                    key={f.path}
-                    className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded"
-                  >
-                    <div>
-                      <div>{f.path}</div>
-                      <div className="text-[10px] text-gray-500">
-                        {f.type} | {f.sample}
-                      </div>
+            <div className="mt-4 max-h-32 overflow-y-auto bg-[#0b1220] rounded p-2 space-y-1">
+              {filtered.map((f) => (
+                <div
+                  key={f.path}
+                  className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded"
+                >
+                  <div>
+                    <div>{f.path}</div>
+                    <div className="text-[10px] text-gray-500">
+                      {f.type} | {f.sample}
                     </div>
-                    <button
-                      onClick={() =>
-                        !selected.find((s) => s.path === f.path) &&
-                        setSelected([...selected, f])
-                      }
-                      className="text-emerald-400"
-                    >
-                      +
-                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* SELECTED */}
-            <div className="mt-3">
-              <div className="bg-[#0b1220] rounded p-2 space-y-1">
-                {selected.map((f) => (
-                  <div
-                    key={f.path}
-                    className="flex justify-between items-center text-xs"
+                  <button
+                    onClick={() =>
+                      !selected.find((s) => s.path === f.path) &&
+                      setSelected([...selected, f])
+                    }
+                    className="text-emerald-400"
                   >
-                    <span>{f.path}</span>
-                    <button
-                      onClick={() =>
-                        setSelected(
-                          selected.filter((x) => x.path !== f.path)
-                        )
-                      }
-                      className="text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    +
+                  </button>
+                </div>
+              ))}
             </div>
           </>
         )}
 
-        {/* ACTIONS */}
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={onClose} className="text-gray-400 text-sm">
             Cancel
