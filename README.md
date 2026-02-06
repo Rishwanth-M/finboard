@@ -87,54 +87,69 @@ finboard-dashboard/
 ├── README.md
 └── package.json
 🖥️ Application Walkthrough
-1️⃣ Empty Dashboard
+## 🖥️ Application Walkthrough
+
+### 1️⃣ Empty Dashboard
+
 Initial dashboard state before adding widgets.
 
+![Empty Dashboard](screenshots/01-dashboard-empty.jpeg)
 
+---
 
-2️⃣ Add Widget – Empty Modal
-Click Add Widget to open the widget creation modal.
+### 2️⃣ Add Widget – Empty Modal
 
+Click **Add Widget** to open the widget creation modal.
 
+![Add Widget Empty](screenshots/02-add-widget-empty.jpeg)
 
-3️⃣ Add Widget – Filled Form
+---
+
+### 3️⃣ Add Widget – Filled Form
+
 User enters widget name, API URL, and refresh interval.
 
+![Add Widget Filled](screenshots/03-add-widget-filled.jpeg)
 
+---
 
-4️⃣ API Test & Field Detection
-Clicking Test:
+### 4️⃣ API Test & Field Detection
 
-Fetches API data
+Clicking **Test** fetches data and shows selectable fields.
 
-Flattens nested JSON
+![API Test Fields](screenshots/04-api-test-fields.jpeg)
 
-Displays selectable fields dynamically
+---
 
+### 5️⃣ Search Functionality
 
+Search and filter fields before adding them to widgets.
 
-5️⃣ Search & Select Fields
-Users can search fields and add them using the + button
-(fully touch-friendly on mobile).
+![Search Fields](screenshots/05-search-fields.jpeg)
 
+---
 
+### 6️⃣ First Widget – Card Widget
 
-6️⃣ First Widget – Card Widget
 Live stock price card using Finnhub API.
 
+![First Widget](screenshots/06-first-widget.jpeg)
 
+---
 
-7️⃣ Second Widget – Table Widget
+### 7️⃣ Second Widget – Table Widget
+
 Market gainers table with pagination and search.
 
+![Second Widget](screenshots/07-second-widget.jpeg)
 
+---
 
-8️⃣ Third Widget – Chart Widget
-Interactive stock price chart with:
+### 8️⃣ Third Widget – Chart Widget
 
-Daily / Weekly / Monthly toggle
+Interactive chart with daily, weekly, and monthly views.
 
-Tooltips and smooth rendering
+![Third Widget](screenshots/08-third-widget.jpeg)
 
 
 
