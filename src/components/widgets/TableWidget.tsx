@@ -31,9 +31,14 @@ export default function TableWidget({ widget }: { widget: WidgetConfig }) {
       }
 
       // Find first array in response (common finance API pattern)
-      const arrayData = Array.isArray(resData)
-  ? resData
-  : Object.values(resData).find(Array.isArray) ?? [];
+     const arrayData =
+  resData?.earningsCalendar ??
+  resData?.top_gainers ??
+  resData?.top_losers ??
+  (Array.isArray(resData)
+    ? resData
+    : Object.values(resData).find(Array.isArray) ?? []);
+
 
 
       if (!Array.isArray(arrayData)) {
